@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Webhook {
+  id            Int      @id @default(autoincrement())
+  url           String
+  secret        String
+  createdAt     DateTime @default(now())
+  events        Event[]
+}
+
+model Event {
+  id        Int              @id @default(autoincrement())
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+  webhookId Int?
+  webhook   Webhook?         @relation(fields: [webhookId], references: [id])
+  attempts  DeliveryAttempt[]
+}
+
+model DeliveryAttempt {
+  id           Int      @id @default(autoincrement())
+  eventId      Int
+  event        Event    @relation(fields: [eventId], references: [id])
+  status       String
+  responseBody String?
+  responseCode Int?
+  createdAt    DateTime @default(now())
+}
+
+model DLQEntry {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model APIKey {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
