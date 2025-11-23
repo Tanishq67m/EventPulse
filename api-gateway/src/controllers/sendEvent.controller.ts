@@ -1,34 +1,32 @@
-// api-gateway/src/controllers/sendEvent.controller.ts
-
 import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
-import { sendEventSchema, SendEventInput } from "../validators/sendEvent.schema";
+import { SendEventInput } from "../validators/sendEvent.schema";
 import { getRedisClient } from "../utils/redis";
 
 export const sendEvent = async (
   req: Request<{}, {}, SendEventInput>,
   res: Response
 ) => {
-  const { type, payload, webhookId } = req.body;
+  const { type, payload } = req.body;
+
+  // The webhook owner is identified by API key middleware
+  const webhookId = (req as any).webhookId;
 
   // 1. Save event in DB
   const event = await prisma.event.create({
     data: {
       type,
       payload,
-      webhookId: webhookId || null,
+      webhookId,  // <--- The IMPORTANT LINE
     },
   });
 
-  // 2. Push event into Redis Stream (non-blocking)
+  // 2. Push event into Redis Stream
   try {
     const redis = getRedisClient();
-    
-    // Ensure connection is established
+
     if (redis.status !== "ready") {
-      await redis.connect().catch(() => {
-        // Connection failed, but continue without Redis
-      });
+      await redis.connect().catch(() => {});
     }
 
     await redis.xadd(
@@ -40,8 +38,7 @@ export const sendEvent = async (
       type
     );
   } catch (error: any) {
-    // Log error but don't fail the request - event is already saved in DB
-    console.error("[Redis] Failed to push event to stream:", error.message);
+    console.error("[Redis] Failed to push event:", error.message);
   }
 
   return res.json({ ok: true, event });

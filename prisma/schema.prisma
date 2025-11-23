@@ -5,13 +5,16 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
 model Webhook {
-  id            Int      @id @default(autoincrement())
-  url           String
-  secret        String
-  createdAt     DateTime @default(now())
-  events        Event[]
+  id        Int        @id @default(autoincrement())
+  url       String
+  name      String
+  secret    String
+  createdAt DateTime   @default(now())
+
+  // Relations
+  events   Event[]
+  apiKeys  APIKey[]
 }
 
 model Event {
@@ -42,9 +45,13 @@ model DLQEntry {
 }
 
 model APIKey {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  isActive  Boolean  @default(true)
+  id         Int      @id @default(autoincrement())
+  key        String   @unique
+  name       String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  // Foreign key to webhook
+  webhookId  Int
+  webhook    Webhook  @relation(fields: [webhookId], references: [id])
 }
