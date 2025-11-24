@@ -4,6 +4,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { json } from "body-parser";
 import { prisma } from "./utils/prisma";
+import { retryDLQ } from "./controllers/retry.controller";
 
 // Controllers
 import { registerWebhook } from "./controllers/registerWebhook.controller";
@@ -16,6 +17,8 @@ import { sendEventSchema } from "./validators/sendEvent.schema";
 
 // API Key Auth Middleware
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { getEventAttempts, listEvents } from "./controllers/events.controller";
+import { listDLQ } from "./controllers/dlq.controller";
 
 dotenv.config();
 
@@ -48,6 +51,19 @@ app.post(
   validate(sendEventSchema),
   sendEvent
 );
+
+//-----------------------------
+// DLQ Retry Route
+//-----------------------------
+app.post("/dlq/:dlqId/retry", apiKeyAuth, retryDLQ);
+
+app.get("/events", apiKeyAuth, listEvents);
+app.get("/events/:id/attempts", apiKeyAuth, getEventAttempts);
+
+//-----------------------------
+// DLQ Route
+//-----------------------------
+app.get("/dlq", apiKeyAuth, listDLQ);
 
 //-----------------------------
 // DB Test Route (public)
