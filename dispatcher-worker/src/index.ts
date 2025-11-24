@@ -1,8 +1,12 @@
-// dispatcher-worker/src/index.ts
+
 import dotenv from "dotenv";
+import { startWorker } from "./workers/streamWorker";
+import { startRetryWorker } from "./workers/retryWorker";
 dotenv.config();
 
 console.log("Dispatcher worker starting...");
+startWorker();
+startRetryWorker();
 
 import express from "express";
 import client from "prom-client";
