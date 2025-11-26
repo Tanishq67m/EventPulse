@@ -15,49 +15,6 @@ Accepts events, persists them (Postgres + Prisma), pushes to Redis Streams, and 
 - **Prometheus Metrics** - Built-in metrics endpoint for monitoring
 - **API Key Authentication** - Secure access control for protected endpoints
 
-## Architecture
-
-```mermaid
-flowchart LR
-  subgraph Producer
-    Client["Client / App"]
-  end
-
-  subgraph API["API Gateway\n(Express + TypeScript)"]
-    A1[Validate (Zod)]
-    A2[Prisma -> Postgres]
-    A3[XADD -> Redis Stream]
-    A4[HMAC / signPayload util]
-  end
-
-  subgraph Redis["Redis Streams"]
-    Stream[eventpulse:events]
-  end
-
-  subgraph Worker["Dispatcher Worker"]
-    W1[XREADGROUP consumer]
-    W2[Prisma -> load Event + Webhook]
-    W3[signPayload(secret,event)]
-    W4[Deliver via Axios]
-    W5[Log DeliveryAttempt]
-    W6[Enqueue Retry (BullMQ)]
-  end
-
-  subgraph Retry["BullMQ / Retry Worker"]
-    RQ[delivery-retries queue]
-    RR[Retry Processor -> DLQ]
-  end
-
-  Client -->|POST /send-event| API
-  API --> A1 --> A2 --> A3 --> Redis
-  Redis -->|XREADGROUP| Worker
-  Worker --> W2 --> W3 --> W4 -->|POST to| Receiver[Webhook Receiver]
-  W4 --> W5
-  W5 --> RQ
-  RQ --> Retry --> RR
-  RR --> Postgres[(Postgres: Events, DeliveryAttempt, DLQEntry)]
-```
-
 ## Quickstart (Local)
 
 ### Prerequisites
