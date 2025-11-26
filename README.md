@@ -15,6 +15,46 @@ Accepts events, persists them (Postgres + Prisma), pushes to Redis Streams, and 
 - **Prometheus Metrics** - Built-in metrics endpoint for monitoring
 - **API Key Authentication** - Secure access control for protected endpoints
 
+## Architecture
+
+```
++--------------------+         XADD         +--------------------+    XREADGROUP    +--------------------+
+|                    |  POST /send-event    |  API Gateway       |  --------------> | Dispatcher Worker  |
+|   Client / App     | -------------------> |  (Express + TS)    |                  |  (streamWorker)    |
+|                    |                      |  - validate        |                  |  - XREADGROUP      |
++--------------------+                      |  - store event DB  |                  |  - signPayload     |
+                                            |  - XADD -> Redis   |                  |  - deliver (axios) |
+                                            +--------------------+                  |  - log attempt     |
+                                                                                   |  - on fail -> add  |
+                                                                                   |    BullMQ job      |
+                                                                                   +--------------------+
+                                                                                             |
+                                                                                             v
+                                                                                   +--------------------+
+                                                                                   |   BullMQ (Redis)   |
+                                                                                   |   queue: delivery- |
+                                                                                   |   retries          |
+                                                                                   +--------------------+
+                                                                                             |
+                                                                                             v
+                                                                                   +--------------------+
+                                                                                   | Retry Worker       |
+                                                                                   | (retryProcessor)   |
+                                                                                   | - execute retry    |
+                                                                                   | - log attempt      |
+                                                                                   | - move to DLQ      |
+                                                                                   +--------------------+
+                                                                                             |
+                                                                                             v
+                                                                                   +--------------------+
+                                                                                   | PostgreSQL (Prisma)|
+                                                                                   | - Event            |
+                                                                                   | - Webhook          |
+                                                                                   | - DeliveryAttempt  |
+                                                                                   | - DLQEntry         |
+                                                                                   +--------------------+
+```
+
 ## Quickstart (Local)
 
 ### Prerequisites
