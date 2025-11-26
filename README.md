@@ -436,6 +436,3 @@ X-EventPulse-Signature: sha256=<hex-encoded-hmac>
 
 Receivers should verify the signature to ensure authenticity.
 
-## License
-
-ISC
